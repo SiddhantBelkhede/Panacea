@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import connectDB from './config/db.js'; 
+import connectDB from './config/db.js';
+
 import hospitalRoutes from './routes/hospitalRoutes.js';
+import childRoutes from './routes/childRoutes.js';
 
 // Load config
 dotenv.config();
@@ -18,6 +20,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/hospital', hospitalRoutes);
+app.use('/api/child', childRoutes);
 
 const PORT = process.env.PORT || 5000;
 

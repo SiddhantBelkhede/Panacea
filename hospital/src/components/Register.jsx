@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { registerHospital } from '../api';
+import React, { useState } from "react";
+import { registerHospital } from "../api";
 
 const Register = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    address: ''
+    name: "",
+    email: "",
+    password: "",
+    address: "",
   });
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -17,15 +17,14 @@ const Register = ({ onSwitchToLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const data = await registerHospital(formData);
-    
+
     if (data && data.hospitalId) {
-        
-      setMessage('Registration Successful! Please Login.');
+      setMessage("Registration Successful! Please Login.");
       setTimeout(() => {
         onSwitchToLogin();
       }, 1500);
     } else {
-      setMessage(data?.message || 'Registration failed');
+      setMessage(data?.message || "Registration failed");
     }
   };
 
@@ -44,13 +43,20 @@ const Register = ({ onSwitchToLogin }) => {
         </div>
         <div className="form-group">
           <label>Password:</label>
-          <input name="password" type="password" onChange={handleChange} required />
+          <input
+            name="password"
+            type="password"
+            onChange={handleChange}
+            required
+          />
         </div>
         <div className="form-group">
           <label>Address:</label>
           <input name="address" onChange={handleChange} required />
         </div>
-        <button type="submit" className="btn-primary">Register</button>
+        <button type="submit" className="btn-primary">
+          Register
+        </button>
       </form>
       <button onClick={onSwitchToLogin} className="link-btn">
         Already have an account? Login here.
