@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const HospitalSchema = new mongoose.Schema({
   name: {
@@ -24,4 +24,4 @@ const HospitalSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('Hospital', HospitalSchema);
+export default mongoose.model("Hospital", HospitalSchema);
