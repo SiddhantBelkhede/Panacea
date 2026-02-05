@@ -1,0 +1,91 @@
+/* Reset */
+/* As always */
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background-color: #f4f4f4;
+  color: #333;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  background-color: #444;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Cards */
+.card {
+  background: white;
+  padding: 20px;
+  border: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* Buttons */
+button {
+  padding: 10px 15px;
+  cursor: pointer;
+  background-color: #eee;
+  border: 1px solid #999;
+  color: #333;
+  font-size: 14px;
+}
+
+button:hover {
+  background-color: #ddd;
+}
+
+.btn-primary {
+  background-color: #0056b3;
+  color: white;
+  border: 1px solid #004494;
+}
+
+.btn-primary:hover {
+  background-color: #004494;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #0056b3;
+  text-decoration: underline;
+  padding: 0;
+  margin-top: 10px;
+  display: inline-block;
+}
+
+/* Utilities */
+.alert {
+  padding: 10px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  margin-bottom: 15px;
+}
