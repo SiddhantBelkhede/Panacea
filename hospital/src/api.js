@@ -39,3 +39,28 @@ export const registerChild = async (data) => {
     return { message: "Network error: Unable to reach server" };
   }
 };
+
+export const getChildByCode = async (code) => {
+  try {
+    const response = await fetch(`${CHILD_API_URL}/${code}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    return await response.json();
+  } catch (error) {
+    return { message: "Network error" };
+  }
+};
+
+export const addVaccination = async (data) => {
+  try {
+    const response = await fetch(`${CHILD_API_URL}/vaccinate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  } catch (error) {
+    return { message: "Network error" };
+  }
+};
