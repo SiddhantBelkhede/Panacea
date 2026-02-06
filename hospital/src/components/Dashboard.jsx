@@ -1,42 +1,84 @@
 import React, { useState } from "react";
-import { registerChild } from "../api.js";
+import { registerChild, getChildByCode, addVaccination } from "../api.js";
 
 const Dashboard = ({ hospital, onLogout }) => {
-  const [activeTab, setActiveTab] = useState("home");
-  const [generatedCode, setGeneratedCode] = useState(null);
+  const [activeTab, setActiveTab] = useState("home"); // 'home', 'register_child', 'update_history'
 
-  // Child Form State
+  // -- Registration State --
+  const [generatedCode, setGeneratedCode] = useState(null);
   const [childData, setChildData] = useState({
     name: "",
     parentName: "",
     dob: "",
     gender: "Male",
   });
-  const [message, setMessage] = useState("");
+  const [regMessage, setRegMessage] = useState("");
 
-  const handleInputChange = (e) => {
+  // -- Update History State --
+  const [searchCode, setSearchCode] = useState("");
+  const [searchedChild, setSearchedChild] = useState(null);
+  const [historyMessage, setHistoryMessage] = useState("");
+
+  // Vaccination Form State
+  const [vaccineForm, setVaccineForm] = useState({
+    vaccineName: "",
+    notes: "",
+  });
+
+  // --- Handlers: Registration ---
+  const handleRegChange = (e) =>
     setChildData({ ...childData, [e.target.name]: e.target.value });
-  };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setMessage("Processing...");
-
-    // Combine form data with the logged-in hospital's ID
-    const payload = {
+    setRegMessage("Processing...");
+    const result = await registerChild({
       ...childData,
       hospitalId: hospital.hospitalId,
-    };
-
-    const result = await registerChild(payload);
+    });
 
     if (result && result.uniqueCode) {
       setGeneratedCode(result.uniqueCode);
-      setMessage(`Success! Child Registered.`);
-      // Clear form
+      setRegMessage("Success!");
       setChildData({ name: "", parentName: "", dob: "", gender: "Male" });
     } else {
-      setMessage(result.message || "Error registering child");
+      setRegMessage(result.message || "Error registering child");
+    }
+  };
+
+  // --- Handlers: Update History ---
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setHistoryMessage("Searching...");
+    setSearchedChild(null);
+
+    const result = await getChildByCode(searchCode.trim());
+    if (result && result._id) {
+      setSearchedChild(result);
+      setHistoryMessage("");
+    } else {
+      setHistoryMessage(result.message || "Child not found");
+    }
+  };
+
+  const handleVaccineSubmit = async (e) => {
+    e.preventDefault();
+    if (!searchedChild) return;
+
+    const payload = {
+      uniqueCode: searchedChild.uniqueCode,
+      hospitalId: hospital.hospitalId,
+      vaccineName: vaccineForm.vaccineName,
+      notes: vaccineForm.notes,
+    };
+
+    const result = await addVaccination(payload);
+    if (result && result.child) {
+      alert("Record Added Successfully!");
+      setSearchedChild(result.child); // Update local view with new history
+      setVaccineForm({ vaccineName: "", notes: "" });
+    } else {
+      alert("Error updating record");
     }
   };
 
@@ -48,7 +90,7 @@ const Dashboard = ({ hospital, onLogout }) => {
     backgroundColor: isActive ? "#007bff" : "transparent",
     color: isActive ? "white" : "#555",
     border: isActive ? "none" : "1px solid #ddd",
-    borderRadius: "50px", // Pill shape
+    borderRadius: "50px",
     fontWeight: isActive ? "600" : "500",
     fontSize: "14px",
     transition: "all 0.2s ease",
@@ -63,14 +105,6 @@ const Dashboard = ({ hospital, onLogout }) => {
     fontSize: "15px",
     backgroundColor: "#fafafa",
     marginTop: "5px",
-  };
-
-  const labelStyle = {
-    display: "block",
-    marginBottom: "5px",
-    fontWeight: "600",
-    color: "#444",
-    fontSize: "14px",
   };
 
   return (
@@ -124,7 +158,6 @@ const Dashboard = ({ hospital, onLogout }) => {
             borderRadius: "6px",
             cursor: "pointer",
             fontWeight: "600",
-            fontSize: "14px",
           }}
         >
           Logout
@@ -132,54 +165,51 @@ const Dashboard = ({ hospital, onLogout }) => {
       </div>
 
       {/* Navigation Tabs */}
-      <div style={{ padding: "25px 0", display: "flex" }}>
+      <div
+        style={{
+          padding: "25px 0",
+          display: "flex",
+          borderBottom: "1px solid #f0f0f0",
+        }}
+      >
         <button
-          onClick={() => {
-            setActiveTab("home");
-            setGeneratedCode(null);
-            setMessage("");
-          }}
+          onClick={() => setActiveTab("home")}
           style={tabStyle(activeTab === "home")}
         >
-          Dashboard Home
+          Home
         </button>
         <button
-          onClick={() => {
-            setActiveTab("register_child");
-            setGeneratedCode(null);
-            setMessage("");
-          }}
+          onClick={() => setActiveTab("register_child")}
           style={tabStyle(activeTab === "register_child")}
         >
-          Register New Child
+          Register Child
+        </button>
+        <button
+          onClick={() => setActiveTab("update_history")}
+          style={tabStyle(activeTab === "update_history")}
+        >
+          Update Records
         </button>
       </div>
 
       {/* --- CONTENT AREA --- */}
 
+      {/* 1. HOME TAB */}
       {activeTab === "home" && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            background: "#f8f9fa",
-            borderRadius: "12px",
-            border: "1px dashed #dee2e6",
-          }}
-        >
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
           <div style={{ fontSize: "48px", marginBottom: "15px" }}>🏥</div>
           <h3 style={{ marginTop: 0, color: "#2c3e50" }}>
             Welcome to the Hospital Portal
           </h3>
-          <p style={{ color: "#6c757d", maxWidth: "400px", margin: "0 auto" }}>
-            Use the navigation tabs above to register new births or manage
-            existing patient records.
+          <p style={{ color: "#6c757d" }}>
+            Manage births, vaccinations, and patient history.
           </p>
         </div>
       )}
 
+      {/* 2. REGISTER CHILD TAB */}
       {activeTab === "register_child" && (
-        <div style={{ animation: "fadeIn 0.3s ease-in-out" }}>
+        <div style={{ padding: "20px" }}>
           {generatedCode ? (
             <div
               style={{
@@ -188,10 +218,8 @@ const Dashboard = ({ hospital, onLogout }) => {
                 borderRadius: "12px",
                 padding: "40px",
                 textAlign: "center",
-                marginTop: "10px",
               }}
             >
-              <div style={{ fontSize: "40px", marginBottom: "10px" }}>✅</div>
               <h4
                 style={{
                   margin: "0 0 10px 0",
@@ -201,154 +229,295 @@ const Dashboard = ({ hospital, onLogout }) => {
               >
                 Registration Successful!
               </h4>
-              <p style={{ color: "#047857", marginBottom: "20px" }}>
-                Please write down this code or share it with the parent
-                immediately.
+              <p style={{ color: "#047857" }}>
+                Share this code with the parent:
               </p>
-
-              <div
+              <h1
                 style={{
-                  background: "white",
-                  padding: "20px 40px",
-                  borderRadius: "8px",
-                  display: "inline-block",
-                  marginBottom: "25px",
+                  fontSize: "32px",
+                  fontFamily: "monospace",
+                  color: "#059669",
                   border: "2px dashed #059669",
-                  boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                  display: "inline-block",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
                 }}
               >
-                <h1
-                  style={{
-                    fontSize: "32px",
-                    letterSpacing: "4px",
-                    margin: 0,
-                    fontFamily: "monospace",
-                    color: "#059669",
-                  }}
-                >
-                  {generatedCode}
-                </h1>
-              </div>
-
+                {generatedCode}
+              </h1>
               <br />
               <button
                 onClick={() => {
                   setGeneratedCode(null);
-                  setMessage("");
+                  setRegMessage("");
                 }}
                 className="btn-primary"
-                style={{
-                  padding: "12px 24px",
-                  borderRadius: "6px",
-                  fontSize: "15px",
-                }}
+                style={{ marginTop: "20px" }}
               >
-                + Register Another Child
+                + Register Another
               </button>
             </div>
           ) : (
             <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-              <div
-                style={{
-                  marginBottom: "25px",
-                  borderLeft: "4px solid #007bff",
-                  paddingLeft: "15px",
-                }}
-              >
-                <h3 style={{ margin: 0, color: "#2c3e50" }}>
-                  Register Newborn
-                </h3>
-                <p
-                  style={{ margin: "5px 0 0", color: "#666", fontSize: "14px" }}
-                >
-                  Enter the child's details to generate a unique tracking ID.
-                </p>
-              </div>
-
-              <form
-                onSubmit={handleRegisterSubmit}
-                style={{ backgroundColor: "white", padding: "5px" }}
-              >
-                {message && (
-                  <div className="alert" style={{ marginBottom: "20px" }}>
-                    {message}
-                  </div>
-                )}
-
-                <div className="form-group" style={{ marginBottom: "20px" }}>
-                  <label style={labelStyle}>Child's Full Name</label>
+              <h3>Register Newborn</h3>
+              <form onSubmit={handleRegisterSubmit}>
+                {regMessage && <div className="alert">{regMessage}</div>}
+                <div style={{ marginBottom: "15px" }}>
+                  <label>Child Name</label>
                   <input
                     name="name"
                     value={childData.name}
-                    onChange={handleInputChange}
+                    onChange={handleRegChange}
                     required
-                    placeholder="e.g. Baby Doe"
                     style={inputStyle}
                   />
                 </div>
-
-                <div className="form-group" style={{ marginBottom: "20px" }}>
-                  <label style={labelStyle}>Parent/Guardian Name</label>
+                <div style={{ marginBottom: "15px" }}>
+                  <label>Parent Name</label>
                   <input
                     name="parentName"
                     value={childData.parentName}
-                    onChange={handleInputChange}
+                    onChange={handleRegChange}
                     required
-                    placeholder="Mother or Father's Name"
                     style={inputStyle}
                   />
                 </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "15px",
+                  }}
+                >
+                  <div style={{ marginBottom: "15px" }}>
+                    <label>DOB</label>
+                    <input
+                      type="date"
+                      name="dob"
+                      value={childData.dob}
+                      onChange={handleRegChange}
+                      required
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ marginBottom: "15px" }}>
+                    <label>Gender</label>
+                    <select
+                      name="gender"
+                      value={childData.gender}
+                      onChange={handleRegChange}
+                      style={{ ...inputStyle, height: "45px" }}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ width: "100%", padding: "12px" }}
+                >
+                  Generate ID
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* 3. UPDATE HISTORY TAB */}
+      {activeTab === "update_history" && (
+        <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
+          {/* Search Section */}
+          <div
+            style={{
+              marginBottom: "30px",
+              backgroundColor: "#f8f9fa",
+              padding: "20px",
+              borderRadius: "8px",
+            }}
+          >
+            <h4 style={{ marginTop: 0 }}>Find Child Record</h4>
+            <form
+              onSubmit={handleSearch}
+              style={{ display: "flex", gap: "10px" }}
+            >
+              <input
+                placeholder="Enter Unique ID (e.g. PANA-7A3B9C)"
+                value={searchCode}
+                onChange={(e) => setSearchCode(e.target.value)}
+                style={{ ...inputStyle, marginTop: 0 }}
+                required
+              />
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{ padding: "0 25px" }}
+              >
+                Search
+              </button>
+            </form>
+            {historyMessage && (
+              <p style={{ color: "red", marginTop: "10px" }}>
+                {historyMessage}
+              </p>
+            )}
+          </div>
+
+          {/* Result Section */}
+          {searchedChild && (
+            <div style={{ animation: "fadeIn 0.3s" }}>
+              {/* Child Details Card */}
+              <div
+                style={{
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "8px",
+                  padding: "20px",
+                  marginBottom: "20px",
+                }}
+              >
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     gap: "20px",
-                    marginBottom: "30px",
                   }}
                 >
-                  <div className="form-group">
-                    <label style={labelStyle}>Date of Birth</label>
+                  <div>
+                    <small style={{ color: "#888" }}>Name</small>
+                    <h3 style={{ margin: "0 0 10px 0" }}>
+                      {searchedChild.name}
+                    </h3>
+                    <small style={{ color: "#888" }}>Parent</small>
+                    <p style={{ margin: 0 }}>{searchedChild.parentName}</p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span
+                      style={{
+                        backgroundColor: "#e3f2fd",
+                        color: "#0d47a1",
+                        padding: "5px 10px",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {searchedChild.uniqueCode}
+                    </span>
+                    <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>
+                      DOB: {new Date(searchedChild.dob).toLocaleDateString()}
+                    </p>
+                    <p style={{ margin: 0, fontSize: "14px" }}>
+                      Gender: {searchedChild.gender}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add New Record Form */}
+              <div
+                style={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #4caf50",
+                  borderRadius: "8px",
+                  padding: "20px",
+                  marginBottom: "30px",
+                }}
+              >
+                <h4 style={{ marginTop: 0, color: "#2e7d32" }}>
+                  + Add Vaccination / Appointment Note
+                </h4>
+                <form onSubmit={handleVaccineSubmit}>
+                  <div style={{ marginBottom: "15px" }}>
+                    <label>Vaccine Name / Session Title</label>
                     <input
-                      type="date"
-                      name="dob"
-                      value={childData.dob}
-                      onChange={handleInputChange}
+                      value={vaccineForm.vaccineName}
+                      onChange={(e) =>
+                        setVaccineForm({
+                          ...vaccineForm,
+                          vaccineName: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Polio Dose 1 or General Checkup"
                       required
                       style={inputStyle}
                     />
                   </div>
-
-                  <div className="form-group">
-                    <label style={labelStyle}>Gender</label>
-                    <select
-                      name="gender"
-                      value={childData.gender}
-                      onChange={handleInputChange}
-                      style={{ ...inputStyle, padding: "12px", height: "45px" }}
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
+                  <div style={{ marginBottom: "15px" }}>
+                    <label>Description / Notes</label>
+                    <textarea
+                      value={vaccineForm.notes}
+                      onChange={(e) =>
+                        setVaccineForm({
+                          ...vaccineForm,
+                          notes: e.target.value,
+                        })
+                      }
+                      placeholder="Details about the appointment..."
+                      rows="3"
+                      style={{ ...inputStyle, fontFamily: "sans-serif" }}
+                    />
                   </div>
-                </div>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{
+                      backgroundColor: "#4caf50",
+                      borderColor: "#4caf50",
+                    }}
+                  >
+                    Add Record
+                  </button>
+                </form>
+              </div>
 
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{
-                    width: "100%",
-                    padding: "14px",
-                    fontSize: "16px",
-                    fontWeight: "bold",
-                    borderRadius: "6px",
-                    boxShadow: "0 4px 6px rgba(0, 123, 255, 0.2)",
-                  }}
-                >
-                  Generate Unique ID
-                </button>
-              </form>
+              {/* History List */}
+              <div>
+                <h4>History ({searchedChild.vaccinationHistory.length})</h4>
+                {searchedChild.vaccinationHistory.length === 0 ? (
+                  <p style={{ color: "#888", fontStyle: "italic" }}>
+                    No records found.
+                  </p>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    {searchedChild.vaccinationHistory
+                      .slice()
+                      .reverse()
+                      .map((rec, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            borderLeft: "4px solid #aaa",
+                            paddingLeft: "15px",
+                            backgroundColor: "#f9f9f9",
+                            padding: "10px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <strong>{rec.vaccineName}</strong>
+                            <small>
+                              {new Date(rec.date).toLocaleDateString()}
+                            </small>
+                          </div>
+                          <p style={{ margin: "5px 0 0 0", color: "#555" }}>
+                            {rec.notes}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

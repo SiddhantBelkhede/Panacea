@@ -1,20 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import Dashboard from "./components/Dashboard";
+import Login from "./components/Login.jsx";
+import Register from "./components/Register.jsx";
+import Dashboard from "./components/Dashboard.jsx";
 
 function App() {
-  const [view, setView] = useState("login"); // 'login', 'register', 'dashboard'
-  const [hospitalUser, setHospitalUser] = useState(null);
+  // 1. Initialize user from localStorage if available
+  const [hospitalUser, setHospitalUser] = useState(() => {
+    const savedUser = localStorage.getItem("hospitalUser");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // 2. Initialize view based on whether user is logged in
+  const [view, setView] = useState(() => {
+    return localStorage.getItem("hospitalUser") ? "dashboard" : "login";
+  });
 
   const handleLoginSuccess = (user) => {
     setHospitalUser(user);
+    // 3. Save to localStorage on login
+    localStorage.setItem("hospitalUser", JSON.stringify(user));
     setView("dashboard");
   };
 
   const handleLogout = () => {
     setHospitalUser(null);
+    // 4. Clear from localStorage on logout
+    localStorage.removeItem("hospitalUser");
     setView("login");
   };
 
