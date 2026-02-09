@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { registerChild, getChildByCode, addVaccination } from "../api.js";
+import {
+  registerChild,
+  getChildByCode,
+  addVaccination,
+  scheduleVaccination,
+} from "../api.js";
 
 const Dashboard = ({ hospital, onLogout }) => {
   const [activeTab, setActiveTab] = useState("home"); // 'home', 'register_child', 'update_history'
@@ -18,10 +23,16 @@ const Dashboard = ({ hospital, onLogout }) => {
   const [searchCode, setSearchCode] = useState("");
   const [searchedChild, setSearchedChild] = useState(null);
   const [historyMessage, setHistoryMessage] = useState("");
+  const [actionType, setActionType] = useState("record"); // 'record' (past) or 'schedule' (future)
 
-  // Vaccination Form State
+  // Forms
   const [vaccineForm, setVaccineForm] = useState({
     vaccineName: "",
+    notes: "",
+  });
+  const [scheduleForm, setScheduleForm] = useState({
+    vaccineName: "",
+    dueDate: "",
     notes: "",
   });
 
@@ -75,10 +86,31 @@ const Dashboard = ({ hospital, onLogout }) => {
     const result = await addVaccination(payload);
     if (result && result.child) {
       alert("Record Added Successfully!");
-      setSearchedChild(result.child); // Update local view with new history
+      setSearchedChild(result.child);
       setVaccineForm({ vaccineName: "", notes: "" });
     } else {
       alert("Error updating record");
+    }
+  };
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!searchedChild) return;
+
+    const payload = {
+      uniqueCode: searchedChild.uniqueCode,
+      vaccineName: scheduleForm.vaccineName,
+      dueDate: scheduleForm.dueDate,
+      notes: scheduleForm.notes,
+    };
+
+    const result = await scheduleVaccination(payload);
+    if (result && result.child) {
+      setSearchedChild(result.child);
+      alert("Scheduled Successfully!");
+      setScheduleForm({ vaccineName: "", dueDate: "", notes: "" });
+    } else {
+      alert("Error scheduling: " + (result.message || "Unknown error"));
     }
   };
 
@@ -385,12 +417,12 @@ const Dashboard = ({ hospital, onLogout }) => {
                   }}
                 >
                   <div>
-                    <small style={{ color: "#888" }}>Name</small>
-                    <h3 style={{ margin: "0 0 10px 0" }}>
+                    <h3 style={{ margin: "0 0 5px 0" }}>
                       {searchedChild.name}
                     </h3>
-                    <small style={{ color: "#888" }}>Parent</small>
-                    <p style={{ margin: 0 }}>{searchedChild.parentName}</p>
+                    <p style={{ margin: 0, color: "#666" }}>
+                      Parent: {searchedChild.parentName}
+                    </p>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <span
@@ -404,77 +436,248 @@ const Dashboard = ({ hospital, onLogout }) => {
                     >
                       {searchedChild.uniqueCode}
                     </span>
-                    <p style={{ margin: "10px 0 0 0", fontSize: "14px" }}>
+                    <p style={{ margin: "5px 0 0 0", fontSize: "14px" }}>
                       DOB: {new Date(searchedChild.dob).toLocaleDateString()}
-                    </p>
-                    <p style={{ margin: 0, fontSize: "14px" }}>
-                      Gender: {searchedChild.gender}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Add New Record Form */}
+              {/* ACTION TOGGLE */}
+              <div
+                style={{ display: "flex", gap: "10px", marginBottom: "20px" }}
+              >
+                <button
+                  onClick={() => setActionType("record")}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    borderRadius: "6px",
+                    border: "1px solid #ccc",
+                    backgroundColor:
+                      actionType === "record" ? "#4caf50" : "#f9f9f9",
+                    color: actionType === "record" ? "white" : "#333",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Record Past Vaccine
+                </button>
+                <button
+                  onClick={() => setActionType("schedule")}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    borderRadius: "6px",
+                    border: "1px solid #ccc",
+                    backgroundColor:
+                      actionType === "schedule" ? "#ff9800" : "#f9f9f9",
+                    color: actionType === "schedule" ? "white" : "#333",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Schedule Next Dose
+                </button>
+              </div>
+
+              {/* FORMS */}
               <div
                 style={{
                   backgroundColor: "#fff",
-                  border: "1px solid #4caf50",
+                  border: `1px solid ${actionType === "record" ? "#4caf50" : "#ff9800"}`,
                   borderRadius: "8px",
                   padding: "20px",
                   marginBottom: "30px",
                 }}
               >
-                <h4 style={{ marginTop: 0, color: "#2e7d32" }}>
-                  + Add Vaccination / Appointment Note
-                </h4>
-                <form onSubmit={handleVaccineSubmit}>
-                  <div style={{ marginBottom: "15px" }}>
-                    <label>Vaccine Name / Session Title</label>
-                    <input
-                      value={vaccineForm.vaccineName}
-                      onChange={(e) =>
-                        setVaccineForm({
-                          ...vaccineForm,
-                          vaccineName: e.target.value,
-                        })
-                      }
-                      placeholder="e.g. Polio Dose 1 or General Checkup"
-                      required
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div style={{ marginBottom: "15px" }}>
-                    <label>Description / Notes</label>
-                    <textarea
-                      value={vaccineForm.notes}
-                      onChange={(e) =>
-                        setVaccineForm({
-                          ...vaccineForm,
-                          notes: e.target.value,
-                        })
-                      }
-                      placeholder="Details about the appointment..."
-                      rows="3"
-                      style={{ ...inputStyle, fontFamily: "sans-serif" }}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    style={{
-                      backgroundColor: "#4caf50",
-                      borderColor: "#4caf50",
-                    }}
-                  >
-                    Add Record
-                  </button>
-                </form>
+                {actionType === "record" ? (
+                  <form onSubmit={handleVaccineSubmit}>
+                    <h4 style={{ marginTop: 0, color: "#2e7d32" }}>
+                      + Add Completed Record
+                    </h4>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label>Vaccine Name</label>
+                      <input
+                        value={vaccineForm.vaccineName}
+                        onChange={(e) =>
+                          setVaccineForm({
+                            ...vaccineForm,
+                            vaccineName: e.target.value,
+                          })
+                        }
+                        placeholder="e.g. Polio Dose 1"
+                        required
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label>Notes</label>
+                      <textarea
+                        value={vaccineForm.notes}
+                        onChange={(e) =>
+                          setVaccineForm({
+                            ...vaccineForm,
+                            notes: e.target.value,
+                          })
+                        }
+                        placeholder="Details..."
+                        rows="2"
+                        style={{ ...inputStyle, fontFamily: "sans-serif" }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{
+                        backgroundColor: "#4caf50",
+                        borderColor: "#4caf50",
+                      }}
+                    >
+                      Save Record
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleScheduleSubmit}>
+                    <h4 style={{ marginTop: 0, color: "#ef6c00" }}>
+                      🕒 Schedule Future Vaccination
+                    </h4>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label>Next Vaccine Name</label>
+                      <input
+                        value={scheduleForm.vaccineName}
+                        onChange={(e) =>
+                          setScheduleForm({
+                            ...scheduleForm,
+                            vaccineName: e.target.value,
+                          })
+                        }
+                        placeholder="e.g. Polio Dose 2"
+                        required
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label>Due Date</label>
+                      <input
+                        type="date"
+                        value={scheduleForm.dueDate}
+                        onChange={(e) =>
+                          setScheduleForm({
+                            ...scheduleForm,
+                            dueDate: e.target.value,
+                          })
+                        }
+                        required
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "15px" }}>
+                      <label>Instructions for Parent</label>
+                      <textarea
+                        value={scheduleForm.notes}
+                        onChange={(e) =>
+                          setScheduleForm({
+                            ...scheduleForm,
+                            notes: e.target.value,
+                          })
+                        }
+                        placeholder="Bring vaccination card..."
+                        rows="2"
+                        style={{ ...inputStyle, fontFamily: "sans-serif" }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{
+                        backgroundColor: "#ff9800",
+                        borderColor: "#ff9800",
+                      }}
+                    >
+                      Set Schedule
+                    </button>
+                  </form>
+                )}
               </div>
 
-              {/* History List */}
+              {/* UPCOMING SCHEDULE DISPLAY */}
+              {searchedChild.upcomingSchedule &&
+                searchedChild.upcomingSchedule.length > 0 && (
+                  <div style={{ marginBottom: "30px" }}>
+                    <h4
+                      style={{
+                        borderBottom: "2px solid #ff9800",
+                        paddingBottom: "5px",
+                        display: "inline-block",
+                      }}
+                    >
+                      Upcoming Schedule
+                    </h4>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                      }}
+                    >
+                      {searchedChild.upcomingSchedule.map((item, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            border: "1px solid #ffcc80",
+                            backgroundColor: "#fff3e0",
+                            padding: "10px",
+                            borderRadius: "6px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <strong>{item.vaccineName}</strong>
+                            <br />
+                            <small style={{ color: "#666" }}>
+                              {item.notes}
+                            </small>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <span
+                              style={{ fontWeight: "bold", color: "#e65100" }}
+                            >
+                              Due: {new Date(item.dueDate).toLocaleDateString()}
+                            </span>
+                            <br />
+                            <span
+                              style={{
+                                fontSize: "12px",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                backgroundColor: "#ffe0b2",
+                              }}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* PAST HISTORY DISPLAY */}
               <div>
-                <h4>History ({searchedChild.vaccinationHistory.length})</h4>
-                {searchedChild.vaccinationHistory.length === 0 ? (
+                <h4
+                  style={{
+                    borderBottom: "2px solid #4caf50",
+                    paddingBottom: "5px",
+                    display: "inline-block",
+                  }}
+                >
+                  Past History
+                </h4>
+                {!searchedChild.vaccinationHistory ||
+                searchedChild.vaccinationHistory.length === 0 ? (
                   <p style={{ color: "#888", fontStyle: "italic" }}>
                     No records found.
                   </p>

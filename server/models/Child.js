@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const ChildSchema = new mongoose.Schema({
   name: {
@@ -15,7 +15,7 @@ const ChildSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ["Male", "Female", "Other"],
+    enum: ['Male', 'Female', 'Other'],
     required: true,
   },
   uniqueCode: {
@@ -25,16 +25,30 @@ const ChildSchema = new mongoose.Schema({
   },
   hospitalId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Hospital",
+    ref: 'Hospital',
     required: true,
   },
-  // This is for later when I have histor to update
+  // Past Records
   vaccinationHistory: [
     {
       vaccineName: String,
       date: Date,
       notes: String, // Notes from docter/hospital for AI
-      hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: "Hospital" },
+      hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
+    },
+  ],
+
+  // Future Schedule
+  upcomingSchedule: [
+    {
+      vaccineName: String,
+      dueDate: Date,
+      status: {
+        type: String,
+        enum: ['Pending', 'Overdue', 'Completed'],
+        default: 'Pending',
+      },
+      notes: String,
     },
   ],
   createdAt: {
@@ -43,4 +57,4 @@ const ChildSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model("Child", ChildSchema);
+export default mongoose.model('Child', ChildSchema);
