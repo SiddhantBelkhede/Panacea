@@ -64,3 +64,17 @@ export const addVaccination = async (data) => {
     return { message: "Network error" };
   }
 };
+
+export const scheduleVaccination = async (data) => {
+  try {
+    const responce = await fetch(`${CHILD_API_URL}/schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    return await responce.json();
+  } catch (error) {
+    return { message: "Network error" };
+  }
+};
