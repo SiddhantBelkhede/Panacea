@@ -75,21 +75,22 @@ export const addVaccinationRecord = async (req, res) => {
   }
 };
 
+// POST /api/child/schedule
 export const scheduleVaccination = async (req, res) => {
   const { uniqueCode, vaccineName, dueDate, notes } = req.body;
 
   try {
-    const child = await child.findOne({ uniqueCode });
+    const child = await Child.findOne({ uniqueCode });
     if (!child) return res.status(404).json({ message: 'Child not found' });
 
-    child.upcommingSchedule.push({
+    child.upcomingSchedule.push({
       vaccineName,
       dueDate: new Date(dueDate),
       notes,
     });
 
     await child.save();
-    res.json({ message: 'Schedule successfully', child });
+    res.json({ message: 'Scheduled successfully', child });
   } catch (err) {
     return res
       .status(500)
