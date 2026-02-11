@@ -1,5 +1,6 @@
 const API_URL = 'http://localhost:5000/api/parent';
 const AI_URL = 'http://localhost:8000';
+const CHILD_API_URL = 'http://localhost:5000/api/child';
 
 export const loginParent = async (uniqueCode, dob) => {
   try {
@@ -29,7 +30,22 @@ export const askAI = async (historyContext, userQuestion) => {
     return await response.json();
   } catch (error) {
     return {
-      answer: 'Error: Unable to reach AI service. Is the Python server running?',
+      answer:
+        'Error: Unable to reach AI service. Is the Python server running?',
     };
+  }
+};
+
+export const requestAppointment = async (data) => {
+  try {
+    const response = await fetch(`${CHILD_API_URL}/request-appointment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    return await response.json();
+  } catch (error) {
+    return { message: 'Network error' };
   }
 };

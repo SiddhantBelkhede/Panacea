@@ -97,3 +97,25 @@ export const scheduleVaccination = async (req, res) => {
       .json({ message: 'Server Error', error: err.message });
   }
 };
+
+// POST /api/child/request-appointment
+export const requestAppointment = async (req, res) => {
+  const { uniqueCode, vaccineName, requestedDate, notes } = req.body;
+
+  try {
+    const child = await Child.findOne({ uniqueCode });
+    if (!child) return res.status(404).json({ message: 'Child not found' });
+
+    child.upcomingSchedule.push({
+      vaccineName: vaccineName,
+      dueDate: new Date(requestedDate),
+      status: 'Requested',
+      notes: notes || '',
+    });
+
+    await child.save();
+    res.json({ message: 'Appointment requested successfully', child });
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+};

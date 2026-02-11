@@ -45,7 +45,7 @@ const ChildSchema = new mongoose.Schema({
       dueDate: Date,
       status: {
         type: String,
-        enum: ['Pending', 'Overdue', 'Completed'],
+        enum: ['Pending', 'Overdue', 'Completed', 'Requested'],
         default: 'Pending',
       },
       notes: String,
