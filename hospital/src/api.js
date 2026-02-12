@@ -78,3 +78,30 @@ export const scheduleVaccination = async (data) => {
     return { message: "Network error" };
   }
 };
+
+export const getPendingRequests = async (hospitalId) => {
+  try {
+    const response = await fetch(`${API_URL}/${hospitalId}/requests`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    return await response.json();
+  } catch (error) {
+    return [];
+  }
+};
+
+export const updateAppointmentStatus = async (data) => {
+  try {
+    const response = await fetch(`${CHILD_API_URL}/update-appointment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    return await response.json();
+  } catch (error) {
+    return { message: "Network error" };
+  }
+};

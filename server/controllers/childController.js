@@ -119,3 +119,26 @@ export const requestAppointment = async (req, res) => {
     res.status(500).json({ message: 'Server Error', error: err.message });
   }
 };
+
+export const updateAppointmentStatus = async (req, res) => {
+  const { childId, appointmentId, status, newDate } = req.body;
+
+  try {
+    const child = await Child.findById(childId);
+    if (!child) return res.status(404).json({ message: 'Child not found' });
+
+    // Find the specific appointment in the array
+    const appointment = child.upcomingSchedule.id(appointmentId);
+    if (!appointment)
+      return res.status(404).json({ message: 'Appointment not found' });
+
+    // Update fields
+    appointment.status = status;
+    if (newDate) appointment.dueDate = new Date(newDate);
+
+    await child.save();
+    res.json({ message: 'Appointment updated', child });
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+};
