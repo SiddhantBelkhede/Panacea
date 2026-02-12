@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   registerChild,
   getChildByCode,
   addVaccination,
   scheduleVaccination,
+  getPendingRequests,
+  updateAppointmentStatus,
 } from "../api.js";
 
 const Dashboard = ({ hospital, onLogout }) => {
-  const [activeTab, setActiveTab] = useState("home"); // 'home', 'register_child', 'update_history'
+  const [activeTab, setActiveTab] = useState("home");
 
   // -- Registration State --
   const [generatedCode, setGeneratedCode] = useState(null);
@@ -23,8 +25,7 @@ const Dashboard = ({ hospital, onLogout }) => {
   const [searchCode, setSearchCode] = useState("");
   const [searchedChild, setSearchedChild] = useState(null);
   const [historyMessage, setHistoryMessage] = useState("");
-  const [actionType, setActionType] = useState("record"); // 'record' (past) or 'schedule' (future)
-
+  const [actionType, setActionType] = useState("record");
   // Forms
   const [vaccineForm, setVaccineForm] = useState({
     vaccineName: "",
@@ -35,6 +36,27 @@ const Dashboard = ({ hospital, onLogout }) => {
     dueDate: "",
     notes: "",
   });
+
+  // -- Pending Requests State --
+  const [requests, setRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState({}); // Map of appointmentId -> newDate
+
+  // Fetch requests when tab changes
+  useEffect(() => {
+    if (activeTab === "requests") {
+      fetchRequests();
+    }
+  }, [activeTab]);
+
+  const fetchRequests = async () => {
+    setLoadingRequests(true);
+    const data = await getPendingRequests(hospital.hospitalId);
+    if (Array.isArray(data)) {
+      setRequests(data);
+    }
+    setLoadingRequests(false);
+  };
 
   // --- Handlers: Registration ---
   const handleRegChange = (e) =>
@@ -111,6 +133,37 @@ const Dashboard = ({ hospital, onLogout }) => {
       setScheduleForm({ vaccineName: "", dueDate: "", notes: "" });
     } else {
       alert("Error scheduling: " + (result.message || "Unknown error"));
+    }
+  };
+
+  // --- Handlers: Request Management ---
+  const handleRequestAction = async (request, action) => {
+    // action: 'confirm' or 'reschedule'
+    const newDate =
+      action === "reschedule" ? rescheduleDate[request.appointmentId] : null;
+
+    if (action === "reschedule" && !newDate) {
+      alert("Please select a new date to reschedule.");
+      return;
+    }
+
+    const payload = {
+      childId: request.childId,
+      appointmentId: request.appointmentId,
+      status: "Pending", // 'Pending' means it's now officially scheduled/approved
+      newDate: newDate,
+    };
+
+    const result = await updateAppointmentStatus(payload);
+    if (result && result.child) {
+      alert(
+        action === "confirm"
+          ? "Appointment Confirmed!"
+          : "Appointment Rescheduled!",
+      );
+      fetchRequests(); // Refresh list
+    } else {
+      alert("Error updating status");
     }
   };
 
@@ -202,6 +255,7 @@ const Dashboard = ({ hospital, onLogout }) => {
           padding: "25px 0",
           display: "flex",
           borderBottom: "1px solid #f0f0f0",
+          overflowX: "auto",
         }}
       >
         <button
@@ -221,6 +275,26 @@ const Dashboard = ({ hospital, onLogout }) => {
           style={tabStyle(activeTab === "update_history")}
         >
           Update Records
+        </button>
+        <button
+          onClick={() => setActiveTab("requests")}
+          style={tabStyle(activeTab === "requests")}
+        >
+          Requests{" "}
+          {requests.length > 0 && (
+            <span
+              style={{
+                backgroundColor: "red",
+                color: "white",
+                borderRadius: "50%",
+                padding: "2px 6px",
+                fontSize: "10px",
+                verticalAlign: "top",
+              }}
+            >
+              {requests.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -573,7 +647,7 @@ const Dashboard = ({ hospital, onLogout }) => {
                       />
                     </div>
                     <div style={{ marginBottom: "15px" }}>
-                      <label>Instructions for Parent</label>
+                      <label>Instructions</label>
                       <textarea
                         value={scheduleForm.notes}
                         onChange={(e) =>
@@ -582,7 +656,7 @@ const Dashboard = ({ hospital, onLogout }) => {
                             notes: e.target.value,
                           })
                         }
-                        placeholder="Bring vaccination card..."
+                        placeholder="Notes..."
                         rows="2"
                         style={{ ...inputStyle, fontFamily: "sans-serif" }}
                       />
@@ -600,127 +674,160 @@ const Dashboard = ({ hospital, onLogout }) => {
                   </form>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      )}
 
-              {/* UPCOMING SCHEDULE DISPLAY */}
-              {searchedChild.upcomingSchedule &&
-                searchedChild.upcomingSchedule.length > 0 && (
-                  <div style={{ marginBottom: "30px" }}>
-                    <h4
-                      style={{
-                        borderBottom: "2px solid #ff9800",
-                        paddingBottom: "5px",
-                        display: "inline-block",
-                      }}
-                    >
-                      Upcoming Schedule
-                    </h4>
+      {/* 4. APPOINTMENT REQUESTS TAB */}
+      {activeTab === "requests" && (
+        <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
+          <h3
+            style={{
+              color: "#2c3e50",
+              borderBottom: "2px solid #007bff",
+              paddingBottom: "10px",
+            }}
+          >
+            Pending Appointment Requests
+          </h3>
+
+          {loadingRequests ? (
+            <p>Loading...</p>
+          ) : requests.length === 0 ? (
+            <p
+              style={{
+                color: "#7f8c8d",
+                fontStyle: "italic",
+                marginTop: "20px",
+              }}
+            >
+              No pending requests found.
+            </p>
+          ) : (
+            <div style={{ display: "grid", gap: "20px", marginTop: "20px" }}>
+              {requests.map((req) => (
+                <div
+                  key={req.appointmentId}
+                  style={{
+                    backgroundColor: "white",
+                    border: "1px solid #dcdcdc",
+                    borderRadius: "8px",
+                    padding: "20px",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ margin: "0 0 5px 0" }}>
+                        {req.childName}{" "}
+                        <span
+                          style={{
+                            fontWeight: "normal",
+                            fontSize: "13px",
+                            color: "#666",
+                          }}
+                        >
+                          ({req.uniqueCode})
+                        </span>
+                      </h4>
+                      <p style={{ margin: "0", color: "#666" }}>
+                        Parent: {req.parentName}
+                      </p>
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          backgroundColor: "#f9f9f9",
+                          padding: "10px",
+                          borderRadius: "6px",
+                          borderLeft: "3px solid #ff9800",
+                        }}
+                      >
+                        <strong>Requested: {req.vaccineName}</strong>
+                        <br />
+                        <span>
+                          Date: {new Date(req.dueDate).toLocaleDateString()}
+                        </span>
+                        <br />
+                        <small style={{ fontStyle: "italic" }}>
+                          "{req.notes}"
+                        </small>
+                      </div>
+                    </div>
                     <div
                       style={{
+                        textAlign: "right",
                         display: "flex",
                         flexDirection: "column",
                         gap: "10px",
                       }}
                     >
-                      {searchedChild.upcomingSchedule.map((item, index) => (
-                        <div
-                          key={index}
+                      <button
+                        onClick={() => handleRequestAction(req, "confirm")}
+                        style={{
+                          backgroundColor: "#4caf50",
+                          color: "white",
+                          border: "none",
+                          padding: "10px 15px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Confirm Date
+                      </button>
+
+                      <div
+                        style={{
+                          borderTop: "1px solid #eee",
+                          paddingTop: "10px",
+                        }}
+                      >
+                        <small
+                          style={{ display: "block", marginBottom: "5px" }}
+                        >
+                          Or Reschedule:
+                        </small>
+                        <input
+                          type="date"
+                          onChange={(e) =>
+                            setRescheduleDate({
+                              ...rescheduleDate,
+                              [req.appointmentId]: e.target.value,
+                            })
+                          }
                           style={{
-                            border: "1px solid #ffcc80",
-                            backgroundColor: "#fff3e0",
-                            padding: "10px",
+                            padding: "5px",
+                            border: "1px solid #ccc",
+                            borderRadius: "4px",
+                            marginBottom: "5px",
+                          }}
+                        />
+                        <button
+                          onClick={() => handleRequestAction(req, "reschedule")}
+                          style={{
+                            backgroundColor: "#ff9800",
+                            color: "white",
+                            border: "none",
+                            padding: "8px 15px",
                             borderRadius: "6px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
+                            cursor: "pointer",
+                            width: "100%",
                           }}
                         >
-                          <div>
-                            <strong>{item.vaccineName}</strong>
-                            <br />
-                            <small style={{ color: "#666" }}>
-                              {item.notes}
-                            </small>
-                          </div>
-                          <div style={{ textAlign: "right" }}>
-                            <span
-                              style={{ fontWeight: "bold", color: "#e65100" }}
-                            >
-                              Due: {new Date(item.dueDate).toLocaleDateString()}
-                            </span>
-                            <br />
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                backgroundColor: "#ffe0b2",
-                              }}
-                            >
-                              {item.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                          Reschedule
+                        </button>
+                      </div>
                     </div>
                   </div>
-                )}
-
-              {/* PAST HISTORY DISPLAY */}
-              <div>
-                <h4
-                  style={{
-                    borderBottom: "2px solid #4caf50",
-                    paddingBottom: "5px",
-                    display: "inline-block",
-                  }}
-                >
-                  Past History
-                </h4>
-                {!searchedChild.vaccinationHistory ||
-                searchedChild.vaccinationHistory.length === 0 ? (
-                  <p style={{ color: "#888", fontStyle: "italic" }}>
-                    No records found.
-                  </p>
-                ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                  >
-                    {searchedChild.vaccinationHistory
-                      .slice()
-                      .reverse()
-                      .map((rec, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            borderLeft: "4px solid #aaa",
-                            paddingLeft: "15px",
-                            backgroundColor: "#f9f9f9",
-                            padding: "10px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <strong>{rec.vaccineName}</strong>
-                            <small>
-                              {new Date(rec.date).toLocaleDateString()}
-                            </small>
-                          </div>
-                          <p style={{ margin: "5px 0 0 0", color: "#555" }}>
-                            {rec.notes}
-                          </p>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

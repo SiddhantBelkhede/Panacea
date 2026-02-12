@@ -1,12 +1,14 @@
-import express from "express";
+import express from 'express';
 import {
   registerHospital,
   loginHospital,
-} from "../controllers/hospitalController.js";
+  getPendingRequest,
+} from '../controllers/hospitalController.js';
 
 const router = express.Router();
 
-router.post("/register", registerHospital);
-router.post("/login", loginHospital);
+router.post('/register', registerHospital);
+router.post('/login', loginHospital);
+router.get('/:id/requests', getPendingRequest);
 
 export default router;
