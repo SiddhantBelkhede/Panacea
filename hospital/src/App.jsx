@@ -1,58 +1,45 @@
-import React, { useState, useEffect } from "react";
-import "./App.css";
-import Login from "./components/Login.jsx";
-import Register from "./components/Register.jsx";
-import Dashboard from "./components/Dashboard.jsx";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import DashboardLayout from './layouts/DashboardLayout';
+
+import Login from './pages/Login';
+import Overview from './pages/Overview';
+import RegisterPatient from './pages/RegisterPatient';
+import Records from './pages/Records';
+import Requests from './pages/Requests';
+
+// Protected Route Wrapper
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
 
 function App() {
-  // 1. Initialize user from localStorage if available
-  const [hospitalUser, setHospitalUser] = useState(() => {
-    const savedUser = localStorage.getItem("hospitalUser");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  // 2. Initialize view based on whether user is logged in
-  const [view, setView] = useState(() => {
-    return localStorage.getItem("hospitalUser") ? "dashboard" : "login";
-  });
-
-  const handleLoginSuccess = (user) => {
-    setHospitalUser(user);
-    // 3. Save to localStorage on login
-    localStorage.setItem("hospitalUser", JSON.stringify(user));
-    setView("dashboard");
-  };
-
-  const handleLogout = () => {
-    setHospitalUser(null);
-    // 4. Clear from localStorage on logout
-    localStorage.removeItem("hospitalUser");
-    setView("login");
-  };
-
   return (
-    <div>
-      <header>
-        <h1>Panacea Hospital Portal</h1>
-      </header>
+    <AuthProvider>
+      <BrowserRouter>
+        <Toaster position="top-right" />
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-      <div className="container">
-        {view === "login" && (
-          <Login
-            onLoginSuccess={handleLoginSuccess}
-            onSwitchToRegister={() => setView("register")}
-          />
-        )}
-
-        {view === "register" && (
-          <Register onSwitchToLogin={() => setView("login")} />
-        )}
-
-        {view === "dashboard" && hospitalUser && (
-          <Dashboard hospital={hospitalUser} onLogout={handleLogout} />
-        )}
-      </div>
-    </div>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Overview />} />
+            <Route path="register-patient" element={<RegisterPatient />} />
+            <Route path="records" element={<Records />} />
+            <Route path="requests" element={<Requests />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
